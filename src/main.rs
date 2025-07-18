@@ -50,10 +50,10 @@ struct Args {
 
 #[derive(Debug)]
 struct FileOperation {
-    source: String,
-    destination: String,
-    current_path: String,
-    destination_path: String,
+    source: String,           // Original source filename (e.g., "issue-12345.rs")
+    destination: String,      // New destination filename (e.g., "custom_attr.rs")
+    current_path: String,     // Full current path
+    destination_path: String, // Full destination path
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -72,13 +72,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Phase 3: Git commit if requested
+    // This is -g flag and it's needed
+    // To commit moves before changing files
     if args.git {
         git_commit_moves(&operations)?;
     }
 
     // Phase 4: Apply other operations to each moved file
     for op in &operations {
-        apply_post_move_operations(&op.destination_path, &args)?;
+        apply_post_move_operations(op, &args)?; // Pass the whole FileOperation
     }
 
     Ok(())
