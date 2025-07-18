@@ -3,6 +3,7 @@ Small written in Rust test manager to improve quality of life working in tests/u
 
 ## Usage
 
+### Single File Mode (Default)
 ```bash
 test-manager <source> -n <new_name> -p <path> [OPTIONS]
 ```
@@ -12,14 +13,25 @@ test-manager <source> -n <new_name> -p <path> [OPTIONS]
 - `-n <new_name>` - New filename (e.g., `custom_attr.rs`)
 - `-p <path>` - Subdirectory under `tests/ui` (e.g., `attributes`)
 
-**Optional:**
+### Multi-File Mode
+```bash
+test-manager -m <source1> <path1> <new_name1> <source2> <path2> <new_name2> ... [OPTIONS]
+```
+
+**Required:**
+- `-m, --multi` - Enable multi-file mode
+- Triplets of: `<source> <path> <new_name>` for each file to move
+
+**Options (available in both modes):**
 - `-s, --stderr` - Remove old `.stderr` file and regenerate with `./x test --bless`
 - `-c, --comment <TEXT>` - Add `//! <TEXT>` doc comment at top of file
 - `-f, --fmt` - Format file with `rustfmt`
 - `-R, --regression` - Extract issue number from filename and add GitHub link comment
+- `-g, --git` - Commit moves with git
 
 ## Examples
 
+### Single File Mode
 ```bash
 # Basic move
 test-manager issue-12345.rs -n custom_attr.rs -p attributes
@@ -27,9 +39,39 @@ test-manager issue-12345.rs -n custom_attr.rs -p attributes
 # Regression test with stderr
 test-manager issue-98765.rs -n proc_macro_span.rs -p proc-macro -R -s
 
-# Full workflow
-test-manager issue-54321.rs -n lifetime_bounds.rs -p lifetimes -s -f -c "Test description"
+# Full workflow with git commit
+test-manager issue-54321.rs -n lifetime_bounds.rs -p lifetimes -s -f -c "Test description" -g
 ```
+
+### Multi-File Mode
+```bash
+# Move multiple files at once
+test-manager -m \
+  issue-12345.rs attributes custom_attr.rs \
+  issue-67890.rs proc-macro proc_macro_span.rs \
+  issue-11111.rs lifetimes lifetime_bounds.rs
+
+# Multi-file with options
+test-manager -m \
+  issue-12345.rs attributes custom_attr.rs \
+  issue-67890.rs proc-macro proc_macro_span.rs \
+  -R -s -g
+```
+
+## Workflow
+
+The tool operates in phases:
+
+1. **Prepare**: Parse arguments and prepare file operations
+2. **Move**: Move all files to their new locations
+3. **Git Commit** (if `-g`): Commit the moves before applying other changes
+4. **Post-processing**: Apply other operations (comments, formatting, stderr generation)
+
+This ensures git history is clean when using the `-g` flag, as moves are committed separately from content changes.
+
+## File Structure
+
+All source files are expected to be in `tests/ui/issues/` and will be moved to `tests/ui/<path>/`.
 
 ## Adding New Features
 
