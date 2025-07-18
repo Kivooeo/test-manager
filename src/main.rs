@@ -1,29 +1,31 @@
 mod modules;
-use modules::*;
 
 use clap::Parser;
-use std::io::{self, Write};
-use std::process::Command;
 
-use crate::modules::regression::extract_issue_number;
-use crate::modules::{
-    comment::add_comment, commit::git_commit_move, format::format_test_file, r#move::rmove,
-    stderr::generate_stderr,
-};
+use crate::modules::multiple::prepare_multi_operations;
+use crate::modules::post_move::apply_post_move_operations;
+use crate::modules::single::prepare_single_operation;
+use crate::modules::{commit::git_commit_moves, r#move::rmove};
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
-    /// Source test file (e.g., custom_attribute.rs)
-    source: String,
+    /// Multi-file mode: alternating source, path, newname triplets
+    #[arg(short = 'm', long)]
+    multi: bool,
 
-    /// New test file name (e.g., custom_attributes_error.rs)
-    #[arg(short = 'n')]
-    new_name: String,
+    /// Arguments - interpretation depends on multi flag
+    /// Default mode: source -n newname -p path
+    /// Multi mode: source1 path1 newname1 source2 path2 newname2 ...
+    args: Vec<String>,
 
-    /// Subdirectory under tests/ui (e.g., attributes)
-    #[arg(short = 'p', long)]
-    path: String,
+    /// New test file name (default mode only)
+    #[arg(short = 'n', conflicts_with = "multi")]
+    new_name: Option<String>,
+
+    /// Subdirectory under tests/ui (default mode only)
+    #[arg(short = 'p', long, conflicts_with = "multi")]
+    path: Option<String>,
 
     /// Remove associated .stderr file and run test
     #[arg(short = 's', long)]
@@ -40,36 +42,43 @@ struct Args {
     /// Regression test: extract issue number from filename and add GitHub link
     #[arg(short = 'R', long)]
     regression: bool,
+
+    /// Commit moves with git
+    #[arg(short = 'g', long)]
+    git: bool,
+}
+
+#[derive(Debug)]
+struct FileOperation {
+    source: String,
+    destination: String,
+    current_path: String,
+    destination_path: String,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 
-    let current_path = format!("tests/ui/issues/{}", args.source);
-    let destination_path = format!("tests/ui/{}/{}", args.path, args.new_name);
-    dbg!(&current_path);
-    dbg!(&destination_path);
-    rmove(&current_path, &destination_path)?;
+    // Phase 1: Prepare all file operations
+    let operations = if args.multi {
+        prepare_multi_operations(&args)?
+    } else {
+        prepare_single_operation(&args)?
+    };
 
-    if args.regression {
-        let issue_number = extract_issue_number(&args.source)?;
-        let regression_comment = format!(
-            "Regression test for https://github.com/rust-lang/rust/issues/{}\n",
-            issue_number
-        );
-        add_comment(&destination_path, &regression_comment)?;
+    // Phase 2: Move all files
+    for op in &operations {
+        rmove(&op.current_path, &op.destination_path)?;
     }
 
-    if args.fmt {
-        format_test_file(&destination_path)?;
+    // Phase 3: Git commit if requested
+    if args.git {
+        git_commit_moves(&operations)?;
     }
 
-    if args.comment.is_some() {
-        add_comment(&destination_path, &args.comment.unwrap())?;
-    }
-
-    if args.stderr {
-        generate_stderr(&destination_path)?;
+    // Phase 4: Apply other operations to each moved file
+    for op in &operations {
+        apply_post_move_operations(&op.destination_path, &args)?;
     }
 
     Ok(())

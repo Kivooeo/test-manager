@@ -2,5 +2,8 @@ pub mod comment;
 pub mod commit;
 pub mod format;
 pub mod r#move;
+pub mod multiple;
+pub mod post_move;
 pub mod regression;
+pub mod single;
 pub mod stderr;

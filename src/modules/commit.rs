@@ -1,23 +1,32 @@
 use std::process::Command;
 
-/// Makes a git commit with a message indicating a file move from old_path to new_path.
-/// Returns Result<(), String> indicating success or error message.
-pub fn git_commit_move(old_path: &str, new_path: &str) -> Result<(), String> {
-    let message = format!("moved {} -> {}", old_path, new_path);
+pub fn git_commit_moves(operations: &[crate::FileOperation]) -> Result<(), String> {
+    // Add all files to git
+    for op in operations {
+        let add_status = Command::new("git")
+            .args(["add", &op.current_path, &op.destination_path])
+            .status()
+            .map_err(|e| format!("Failed to execute git add: {}", e))?;
+
+        if !add_status.success() {
+            return Err(format!("Git add failed for {}", op.destination_path));
+        }
+    }
+
+    // Single commit for all moves
+    let message = if operations.len() == 1 {
+        format!(
+            "moved {} -> {}",
+            operations[0].current_path, operations[0].destination_path
+        )
+    } else {
+        format!("moved {} tests to organized locations", operations.len())
+    };
+
     let status = Command::new("git")
         .args(["commit", "-m", &message])
         .status()
         .map_err(|e| format!("Failed to execute git: {}", e))?;
-
-    // Add both old and new paths to the git index
-    let add_status = Command::new("git")
-        .args(["add", old_path, new_path])
-        .status()
-        .map_err(|e| format!("Failed to execute git add: {}", e))?;
-
-    if !add_status.success() {
-        return Err(format!("Git add failed with status: {}", add_status));
-    }
 
     if status.success() {
         Ok(())
