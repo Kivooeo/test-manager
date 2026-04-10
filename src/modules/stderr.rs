@@ -13,20 +13,18 @@ use std::process::Command;
 // which will automatically create a new stderr file
 // for our new test
 
-pub fn generate_stderr(path: &str) -> Result<(), Box<dyn std::error::Error>> {
-    // Remove old stderr file if it exists
-    let stderr_path = format!("{}.stderr", path.trim_end_matches(".rs"));
-    if Path::new(&stderr_path).exists() {
+pub fn generate_stderr(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    let stderr_path = path.with_extension("stderr");
+    if stderr_path.exists() {
         fs::remove_file(&stderr_path)?;
     }
 
-    // Run `cargo test --bless <path>`
     let status = Command::new("./x")
-        .args(&["test", "--bless", path])
+        .args(["test", "--bless", &path.to_string_lossy()])
         .status()?;
 
     if !status.success() {
-        return Err(format!("Failed to run cargo test --bless {}", path).into());
+        return Err(format!("Failed to run cargo test --bless {}", path.display()).into());
     }
 
     Ok(())

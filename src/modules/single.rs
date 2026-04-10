@@ -11,8 +11,14 @@ pub fn prepare_single_operation(
     let new_name = args.new_name.as_ref().ok_or("New name required (-n)")?;
     let path = args.path.as_ref().ok_or("Path required (-p)")?;
 
-    let current_path = format!("tests/ui/issues/{}", source);
-    let destination_path = format!("tests/ui/{}/{}", path, new_name);
+    let current_path = std::path::PathBuf::from("tests")
+        .join("ui")
+        .join("issues")
+        .join(source);
+    let destination_path = std::path::PathBuf::from("tests")
+        .join("ui")
+        .join(path)
+        .join(new_name);
 
     Ok(vec![FileOperation {
         source: source.clone(),

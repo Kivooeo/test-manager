@@ -14,8 +14,14 @@ pub fn prepare_multi_operations(
         let path = &chunk[1];
         let new_name = &chunk[2];
 
-        let current_path = format!("tests/ui/issues/{}", source);
-        let destination_path = format!("tests/ui/{}/{}", path, new_name);
+        let current_path = std::path::PathBuf::from("tests")
+            .join("ui")
+            .join("issues")
+            .join(source);
+        let destination_path = std::path::PathBuf::from("tests")
+            .join("ui")
+            .join(path)
+            .join(new_name);
 
         operations.push(FileOperation {
             source: source.clone(),

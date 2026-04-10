@@ -1,5 +1,7 @@
 mod modules;
 
+use std::path::PathBuf;
+
 use clap::Parser;
 
 use crate::modules::multiple::prepare_multi_operations;
@@ -50,10 +52,11 @@ struct Args {
 
 #[derive(Debug)]
 struct FileOperation {
-    source: String,           // Original source filename (e.g., "issue-12345.rs")
-    destination: String,      // New destination filename (e.g., "custom_attr.rs")
-    current_path: String,     // Full current path
-    destination_path: String, // Full destination path
+    source: String, // Original source filename (e.g., "issue-12345.rs")
+    #[allow(unused)]
+    destination: String, // New destination filename (e.g., "custom_attr.rs")
+    current_path: PathBuf, // Full current path
+    destination_path: PathBuf, // Full destination path
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
